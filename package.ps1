@@ -5,7 +5,6 @@ if (!(Test-Path -LiteralPath $dll)) { throw 'Build chuni-rpc.dll first.' }
 $destination = Join-Path $root ('dist/chuni-rpc-dev-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 Copy-Item -LiteralPath $dll -Destination $destination
-Get-ChildItem -LiteralPath (Join-Path $root 'package') -File | Copy-Item -Destination $destination
 $licenses = Join-Path $destination 'licenses'
 New-Item -ItemType Directory -Path $licenses | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'vendor/minhook/LICENSE.txt') -Destination (Join-Path $licenses 'MinHook.txt')
