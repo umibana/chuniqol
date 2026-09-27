@@ -22,6 +22,16 @@ bool read(uintptr_t address,void* out,size_t size){SIZE_T got=0;return address&&
 struct NativeString{union{char small[16];uint32_t pointer;};uint32_t length,capacity;};
 static_assert(sizeof(NativeString)==24);
 uint32_t word(const uint8_t* p){uint32_t result;memcpy(&result,p,4);return result;}
+struct MusicEntry{int32_t music;uint8_t difficulty;};
+using Compare=bool(__cdecl*)(MusicEntry*,MusicEntry*);
+Compare original_compare;
+volatile int32_t* sort_kind; // 2 = level ascending, 10 = level descending.
+bool __cdecl compare_hook(MusicEntry* a,MusicEntry* b){
+ uint8_t da=a->difficulty,db=b->difficulty;
+ const int la=((Level)at(0x1218b60))(a->music,&da),lb=((Level)at(0x1218b60))(b->music,&db);
+ if(la==lb)return original_compare(a,b); // Same internal level: keep native order.
+ return *sort_kind==2?la<lb:la>lb;
+}
 void* __fastcall title_hook(void* self,void*,void* out){
  const auto caller=(uintptr_t)__builtin_return_address(0);
  void* result=original(self,out);
@@ -76,9 +86,19 @@ DWORD WINAPI worker(void* module){
  for(const auto& check:checks){BYTE actual[12];if(!read(at(check.va),actual,sizeof(actual))||memcmp(actual,check.bytes,sizeof(actual))){log("REFUSED native bytes");return 0;}}
  HMODULE pinned;if(!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,(LPCWSTR)&base,&pinned)){log("ERROR module pin");return 0;}
  if(MH_Initialize()!=MH_OK){log("ERROR MinHook initialize");return 0;}
- if(MH_CreateHook((void*)at(0xb704e0),(void*)title_hook,(void**)&original)!=MH_OK){log("ERROR hook creation");MH_Uninitialize();return 0;}
- if(MH_EnableHook((void*)at(0xb704e0))!=MH_OK){log("ERROR hook enable; pinned passthrough only");return 0;}
- InterlockedExchange(&active,1);log("READY central selection title decimals");return 0;
+ if(MH_CreateHook((void*)at(0xb704e0),(void*)title_hook,(void**)&original)!=MH_OK)log("ERROR hook creation");
+ else if(MH_EnableHook((void*)at(0xb704e0))!=MH_OK)log("ERROR hook enable; pinned passthrough only");
+ else{InterlockedExchange(&active,1);log("READY central selection title decimals");}
+ // ponytail: runtime signature scan, EXE is hash-pinned; pin the logged VAs once confirmed in-game.
+ const auto nt=(IMAGE_NT_HEADERS*)(base+((IMAGE_DOS_HEADER*)base)->e_lfanew);
+ const auto sites=levels::sort_sites((const unsigned char*)base,nt->OptionalHeader.SizeOfImage);
+ if(sites.compare==SIZE_MAX){log("REFUSED sort signatures");return 0;}
+ const uintptr_t compare=base+sites.compare;sort_kind=(volatile int32_t*)(uintptr_t)word((const uint8_t*)(base+sites.kind));
+ char message[96];snprintf(message,sizeof(message),"SORT comparator=%#x kind=%#x",(unsigned)(compare-base+0x400000),(unsigned)((uintptr_t)sort_kind-base+0x400000));log(message);
+ if(MH_CreateHook((void*)compare,(void*)compare_hook,(void**)&original_compare)!=MH_OK)log("ERROR sort hook creation");
+ else if(MH_EnableHook((void*)compare)!=MH_OK)log("ERROR sort hook enable");
+ else log("READY internal level sort");
+ return 0;
 }
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*){
