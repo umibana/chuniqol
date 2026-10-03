@@ -47,3 +47,5 @@
 **/Option/
 **/amfs/
 **/logs/
+
+!/sdez-1.66/

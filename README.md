@@ -107,3 +107,8 @@ enabled=1
 ```
 
 Skip any mod you don't want; ESC needs premium.
+
+## maimai DX — SDEZ 1.66
+
+Mods for SDEZ 1.66 are kept separately from the SDHD mods above.
+See [NativeTitleLevel](sdez-1.66/NativeTitleLevel/README.md) for internal difficulty in the native song title, build instructions and installation.
