@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cwchar>
 #include "patch.h"
+#include "../local_profile.h"
 namespace {
 constexpr char kGameHash[]="71f8fe2dc8dcf287e5eaa77add22af1137aa5aa7e721049deefd79890d3fae6e";
 volatile LONG status=0;
@@ -29,7 +30,7 @@ bool supported() {
  if(!ok)return false;
  char hex[65];constexpr char digits[]="0123456789abcdef";
  for(unsigned i=0;i<32;++i){hex[i*2]=digits[digest[i]>>4];hex[i*2+1]=digits[digest[i]&15];}hex[64]=0;
- return std::strcmp(hex,kGameHash)==0;
+ return std::strcmp(hex,kGameHash)==0 || local_profile::matches(digest);
 }
 bool match(uint8_t* image,uintptr_t rva,const uint8_t* bytes,size_t size) {
  uint8_t actual[32];SIZE_T got=0;

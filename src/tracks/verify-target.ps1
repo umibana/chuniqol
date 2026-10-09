@@ -2,7 +2,7 @@ param([Parameter(Mandatory=$true)][string]$Executable)
 $ErrorActionPreference='Stop'
 $path=(Resolve-Path -LiteralPath $Executable).Path
 $hash=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-if($hash -ne '71f8fe2dc8dcf287e5eaa77add22af1137aa5aa7e721049deefd79890d3fae6e'){throw 'Unsupported game SHA256. No modification performed.'}
+if($hash -notin @('71f8fe2dc8dcf287e5eaa77add22af1137aa5aa7e721049deefd79890d3fae6e','bf5f17754a191210deb52e685ee9c2246ee907010a9fec436ca4b6b76eef9800')){throw 'Unsupported game SHA256. No modification performed.'}
 $bytes=[IO.File]::ReadAllBytes($path)
 $pe=[BitConverter]::ToInt32($bytes,60)
 if([BitConverter]::ToUInt16($bytes,$pe+4) -ne 0x14c){throw 'Expected x86 image.'}

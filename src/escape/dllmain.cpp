@@ -6,6 +6,7 @@
 #include <cstring>
 #include "MinHook.h"
 #include "policy.h"
+#include "../local_profile.h"
 namespace {
 using Frame=void(__thiscall*)(void*);
 using Calculate=void(__thiscall*)(void*,void*,void*);
@@ -154,7 +155,7 @@ bool supported(){
  bool ok=BCryptOpenAlgorithmProvider(&alg,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
  if(ok)ok=BCryptCreateHash(alg,&h,nullptr,0,nullptr,0,0)>=0;
  while(ok){if(!ReadFile(f,buf,sizeof(buf),&got,nullptr)){ok=false;break;}if(!got)break;ok=BCryptHashData(h,buf,got,0)>=0;}
- if(ok)ok=BCryptFinishHash(h,digest,32,0)>=0&&(!memcmp(digest,expected,32)||!memcmp(digest,patched,32));
+ if(ok)ok=BCryptFinishHash(h,digest,32,0)>=0&&(!memcmp(digest,expected,32)||!memcmp(digest,patched,32)||local_profile::matches(digest));
  if(h)BCryptDestroyHash(h);if(alg)BCryptCloseAlgorithmProvider(alg,0);CloseHandle(f);return ok;
 }
 

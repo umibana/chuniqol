@@ -1,0 +1,19 @@
+#include "local_profile.h"
+#include <cstdio>
+
+int main() {
+    unsigned char digest[32] = {
+        0xbf,0x5f,0x17,0x75,0x4a,0x19,0x12,0x10,
+        0xde,0xb5,0x2e,0x68,0x5e,0xe9,0xc2,0x24,
+        0x6e,0xe9,0x07,0x01,0x0a,0x9f,0xec,0x43,
+        0x6c,0xa4,0xb6,0xb7,0x6e,0xef,0x98,0x00
+    };
+    if (!local_profile::matches(digest)) return 1;
+    for (unsigned byte = 0; byte < sizeof(digest); ++byte) {
+        digest[byte] ^= 1;
+        if (local_profile::matches(digest)) return 2;
+        digest[byte] ^= 1;
+    }
+    std::puts("PASS: exact local executable accepted; every single-byte digest mutation refused.");
+    return 0;
+}

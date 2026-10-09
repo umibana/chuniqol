@@ -5,11 +5,11 @@ if (Get-Process chusanApp,amdaemon -ErrorAction SilentlyContinue) {
     throw 'Close the game and amdaemon before installing.'
 }
 $profiles = @{
-    'chusanApp.exe' = '71f8fe2dc8dcf287e5eaa77add22af1137aa5aa7e721049deefd79890d3fae6e'
+    'chusanApp.exe' = @('71f8fe2dc8dcf287e5eaa77add22af1137aa5aa7e721049deefd79890d3fae6e', 'bf5f17754a191210deb52e685ee9c2246ee907010a9fec436ca4b6b76eef9800')
     'amdaemon.exe' = '014992a5af1b62b5fd42d2cb0c19a38aba4b5437a3ef82d304de2c93065ed70d'
 }
 foreach ($name in $profiles.Keys) {
-    if ((Get-FileHash -LiteralPath (Join-Path $bin $name) -Algorithm SHA256).Hash -ne $profiles[$name]) {
+    if ($profiles[$name] -notcontains (Get-FileHash -LiteralPath (Join-Path $bin $name) -Algorithm SHA256).Hash) {
         throw "Unsupported version: $name. Nothing was changed."
     }
 }

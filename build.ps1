@@ -33,8 +33,10 @@ foreach ($source in @('buffer', 'hook', 'trampoline', 'hde/hde32')) {
     if ($LASTEXITCODE) { throw "MinHook compilation failed: $source" }
     $objects += $object
 }
+$definesFile = Join-Path $build 'rpc-defines.rsp'
+[IO.File]::WriteAllText($definesFile, ('-DCHUNI_APPLICATION_ID=\"' + $ApplicationId + '\"'), [Text.UTF8Encoding]::new($false))
 & $zig @common @core (Join-Path $root 'src/discord_ipc.cpp') (Join-Path $root 'src/dllmain.cpp') @objects `
-    -I (Join-Path $mh 'include') "-DCHUNI_APPLICATION_ID=`"$ApplicationId`"" -shared -o (Join-Path $build 'chuni-rpc.dll')
+    -I (Join-Path $mh 'include') "@$definesFile" -shared -o (Join-Path $build 'chuni-rpc.dll')
 if ($LASTEXITCODE) { throw 'Rich Presence DLL build failed' }
 & $zig @common (Join-Path $root 'tests/hook_smoke.cpp') -o (Join-Path $build 'hook-smoke.exe')
 if ($LASTEXITCODE) { throw 'Hook smoke test build failed' }
