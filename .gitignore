@@ -10,6 +10,8 @@
 !/build-escape.ps1
 !/build-tracks.ps1
 !/build-levels.ps1
+!/build-aime.ps1
+!/install-aime.ps1
 !/install-extras.ps1
 !/package.ps1
 !/src/
@@ -47,5 +49,8 @@
 **/Option/
 **/amfs/
 **/logs/
+docs/superpowers/
+docs/LOCAL-INSTALL.md
+docs/AIME-INVESTIGATION.md
 
 !/sdez-1.66/

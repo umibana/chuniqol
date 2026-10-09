@@ -14,6 +14,7 @@ different variety of mods for sdhd 2.50
 | `chuni-escape.dll`  | Track skip with ESC or TASOLLER FN1                | [ESC](docs/ESC.md)         |
 | `chuni-tracks.dll`  | 4 songs instead of 3.                             | [TRACKS](docs/TRACKS.md)   |
 | `chuni-levels.dll`  | Show internal difficulty level next to song title | [LEVELS](docs/LEVELS.md)   |
+| `chuni-aime.dll`    | Automatic scan of the current Aime card (x64), with manual mode | [AIME](docs/AIME.md) |
 
 
 
