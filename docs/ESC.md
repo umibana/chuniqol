@@ -1,6 +1,6 @@
 # ESC
 
-`chuni-escape.dll` (x86) triggers Track Skip when ESC is pressed.
+`chuni-escape.dll` (x86) triggers Track Skip with ESC or a TASOLLER PLUS FN1 tap when launched through RythmFunLauncher. FN1 + FN2 remains reserved for closing the game.
 
 - Needs `chuni-premium.dll` enabled.
 
@@ -15,6 +15,7 @@
 ```ini
 [escape]
 enabled=1
+tasoller_fn1=1
 ```
 
 Log: `chuni-escape.log`.

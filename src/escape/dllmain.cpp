@@ -14,6 +14,9 @@ uintptr_t base=0,outer=0,music=0,context=0;
 volatile LONG active=0;
 SRWLOCK lock=SRWLOCK_INIT;
 escape::Policy policy;
+HANDLE skip_event=nullptr;
+volatile LONG skip_requested=0;
+bool tasoller_enabled=true;
 unsigned logged_outer=~0u,logged_music=~0u,pulse_mask=0;
 wchar_t config[MAX_PATH],logpath[MAX_PATH];
 struct Guard { Guard(){AcquireSRWLockExclusive(&lock);} ~Guard(){ReleaseSRWLockExclusive(&lock);} };
@@ -34,6 +37,15 @@ bool safe_play(){
   byte(context+0x874)==0&&byte(context+0x875)==0&&byte(context+0x876)==0;
 }
 bool foreground(){DWORD pid=0;GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();}
+bool fn1_tap(bool safe){
+ const DWORD requested=(DWORD)InterlockedExchange(&skip_requested,0);
+ if(!requested)return false;
+ const bool fresh=DWORD(GetTickCount()-requested)<250;
+ char message[160];
+ snprintf(message,sizeof(message),"INPUT launcher FN1 safe=%u focused=%u fresh=%u outer=%u music=%u",safe,foreground(),fresh,get(outer+0x10),get(music+0x10));
+ log(message);
+ return safe&&fresh;
+}
 void __fastcall frame_hook(void* self,void*){
  if(InterlockedCompareExchange(&active,0,0)){
   Guard guard;
@@ -45,17 +57,19 @@ void __fastcall frame_hook(void* self,void*){
    policy.observe(get(p+0x10),GetTickCount64());
    if(was&&!policy.pending)log("RESET menu, state change or deadline");
    if(!policy.pending){music=get(p+0x40);context=current_context();}
-   const bool down=(GetAsyncKeyState(VK_ESCAPE)&0x8000)!=0,focused=foreground();
+   const bool focused=foreground();
    const bool safe=safe_play();
+   const bool tap=fn1_tap(focused&&safe);
+   const bool down=(GetAsyncKeyState(VK_ESCAPE)&0x8000)!=0||tap;
    if(down&&!policy.held&&focused){
     char message[320];auto m=manager();auto t=get(m+4);
-    snprintf(message,sizeof(message),"KEY ESC safe=%u outer=%08lx state=%u music=%08lx state=%u mode=%u context=%08lx modes=%u/%u/%u party=%u pending=%u",
-     safe,(unsigned long)outer,outer_state,(unsigned long)music,get(music+0x10),get(t+0x2c),
+    snprintf(message,sizeof(message),"KEY %s safe=%u outer=%08lx state=%u music=%08lx state=%u mode=%u context=%08lx modes=%u/%u/%u party=%u pending=%u",
+     tap?"TASOLLER FN1":"ESC",safe,(unsigned long)outer,outer_state,(unsigned long)music,get(music+0x10),get(t+0x2c),
      (unsigned long)context,byte(context+0x874),byte(context+0x875),byte(context+0x876),byte(music+0x5f8),policy.pending);
     log(message);
    }
    if(policy.poll(down,focused,safe,GetTickCount64())){
-    pulse_mask=0;logged_outer=logged_music=~0u;log("ARM ESC native track skip");
+    pulse_mask=0;logged_outer=logged_music=~0u;log(tap?"ARM TASOLLER FN1 native track skip":"ARM ESC native track skip");
    }
    if(policy.pending){
     auto child=get(p+0x40);unsigned child_state=get(child+0x10);
@@ -88,6 +102,7 @@ DWORD WINAPI worker(void* module){
  if(wcslen(config)+20>=MAX_PATH)return 0;
  wcscpy(logpath,config);wcscat(logpath,L"chuni-escape.log");wcscat(config,L"chuni-escape.ini");
  if(!GetPrivateProfileIntW(L"escape",L"enabled",0,config)){log("DISABLED");return 0;}
+ tasoller_enabled=GetPrivateProfileIntW(L"escape",L"tasoller_fn1",1,config)!=0;
  if(!supported()){log("REFUSED EXE hash");return 0;}base=(uintptr_t)GetModuleHandleW(nullptr);
  struct Hook{uintptr_t va;BYTE bytes[8];void* detour;void** original;};
  Hook hooks[]={
@@ -98,7 +113,13 @@ DWORD WINAPI worker(void* module){
  if(MH_Initialize()!=MH_OK){log("ERROR hook initialize");return 0;}
  for(auto& h:hooks)if(MH_CreateHook((void*)at(h.va),h.detour,h.original)!=MH_OK){log("ERROR create hook");MH_Uninitialize();return 0;}
  if(MH_EnableHook(MH_ALL_HOOKS)!=MH_OK){log("ERROR enable hook; pinned passthrough");return 0;}
- InterlockedExchange(&active,1);log("READY ESC native skip; ordinary solo play only; native track limit preserved");return 0;
+ InterlockedExchange(&active,1);
+ if(tasoller_enabled)skip_event=CreateEventW(nullptr,FALSE,FALSE,L"Local\\RythmFun.ChuniQOL.TrackSkip");
+ log("READY ESC / launcher TASOLLER FN1 native skip; ordinary solo play only; native track limit preserved");
+ if(tasoller_enabled&&!skip_event)log("ERROR creating launcher FN1 event");
+ while(skip_event&&WaitForSingleObject(skip_event,INFINITE)==WAIT_OBJECT_0)
+  InterlockedExchange(&skip_requested,(LONG)GetTickCount());
+ return 0;
 }
 }
 extern "C" __declspec(dllexport) void __stdcall ChuniEscapeInputFilter(uintptr_t caller,void* wrapper,int* out){
@@ -125,13 +146,15 @@ BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*){
 namespace {
 bool supported(){
  const BYTE expected[32]={0x71,0xf8,0xfe,0x2d,0xc8,0xdc,0xf2,0x87,0xe5,0xea,0xa7,0x7a,0xdd,0x22,0xaf,0x11,0x37,0xaa,0x5a,0xa7,0xe7,0x21,0x04,0x9d,0xee,0xfd,0x79,0x89,0x0d,0x3f,0xae,0x6e};
+ // Already supported by the installed mod: patched SDHD 2.50, same hook bytes.
+ const BYTE patched[32]={0xbf,0x5f,0x17,0x75,0x4a,0x19,0x12,0x10,0xde,0xb5,0x2e,0x68,0x5e,0xe9,0xc2,0x24,0x6e,0xe9,0x07,0x01,0x0a,0x9f,0xec,0x43,0x6c,0xa4,0xb6,0xb7,0x6e,0xef,0x98,0x00};
  wchar_t exe[32768];if(!GetModuleFileNameW(nullptr,exe,32768))return false;
  HANDLE f=CreateFileW(exe,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,0,nullptr);if(f==INVALID_HANDLE_VALUE)return false;
  BCRYPT_ALG_HANDLE alg=nullptr;BCRYPT_HASH_HANDLE h=nullptr;BYTE digest[32],buf[65536];DWORD got;
  bool ok=BCryptOpenAlgorithmProvider(&alg,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
  if(ok)ok=BCryptCreateHash(alg,&h,nullptr,0,nullptr,0,0)>=0;
  while(ok){if(!ReadFile(f,buf,sizeof(buf),&got,nullptr)){ok=false;break;}if(!got)break;ok=BCryptHashData(h,buf,got,0)>=0;}
- if(ok)ok=BCryptFinishHash(h,digest,32,0)>=0&&!memcmp(digest,expected,32);
+ if(ok)ok=BCryptFinishHash(h,digest,32,0)>=0&&(!memcmp(digest,expected,32)||!memcmp(digest,patched,32));
  if(h)BCryptDestroyHash(h);if(alg)BCryptCloseAlgorithmProvider(alg,0);CloseHandle(f);return ok;
 }
 

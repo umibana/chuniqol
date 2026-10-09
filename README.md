@@ -11,7 +11,7 @@ different variety of mods for sdhd 2.50
 | `chuni-rpc.dll`     | Discord Rich presence (song + difficulty)         | [RPC](docs/RPC.md)         |
 | `chuni-credits.dll` | Start with 99 credits                             | [CREDITS](docs/CREDITS.md) |
 | `chuni-premium.dll` | Automatically select PREMIUM TICKET               | [PREMIUM](docs/PREMIUM.md) |
-| `chuni-escape.dll`  | Track skip with ESC                               | [ESC](docs/ESC.md)         |
+| `chuni-escape.dll`  | Track skip with ESC or TASOLLER FN1                | [ESC](docs/ESC.md)         |
 | `chuni-tracks.dll`  | 4 songs instead of 3.                             | [TRACKS](docs/TRACKS.md)   |
 | `chuni-levels.dll`  | Show internal difficulty level next to song title | [LEVELS](docs/LEVELS.md)   |
 
